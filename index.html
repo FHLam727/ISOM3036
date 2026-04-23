@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blockchain Dynamic Interest Rate System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg:      #f0f4f8;
+    --surface: #ffffff;
+    --surface2:#f8fafc;
+    --border:  #e2e8f0;
+    --text:    #1e293b;
+    --muted:   #64748b;
+    --accent:  #2563eb;
+    --green:   #16a34a;
+    --amber:   #d97706;
+    --red:     #dc2626;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; padding: 28px 32px; }
+
+  /* ── Overlays ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.45);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  .overlay.open { display: flex; }
+  #inst-overlay { background: var(--bg); }
+
+  .modal-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px 44px; width: 500px; max-width: 95vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  .modal-box h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+  .modal-box > p { font-size: 0.82rem; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+
+  /* Institution buttons */
+  .inst-list { display: flex; flex-direction: column; gap: 10px; }
+  .inst-btn {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 14px 18px; cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s; text-align: left; width: 100%;
+  }
+  .inst-btn:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(37,99,235,0.1); }
+  .inst-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .inst-name { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+  .inst-addr { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+
+  /* Borrower modal */
+  .borrower-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; margin-bottom: 16px; }
+  .borrower-btn {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; cursor: pointer;
+    transition: border-color 0.2s; text-align: left; width: 100%;
+  }
+  .borrower-btn:hover  { border-color: var(--accent); }
+  .borrower-btn.active { border-color: var(--accent); background: #eff6ff; }
+  .borrower-name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+  .borrower-meta { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+  .borrower-rate { font-family: var(--mono); font-size: 0.9rem; font-weight: 700; }
+
+  /* New borrower form */
+  .divider { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px; }
+  .divider h4 { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; margin-bottom: 12px; }
+  .mini-group label { display: block; font-size: 0.7rem; font-weight: 600; color: var(--muted); margin-bottom: 3px; font-family: var(--mono); text-transform: uppercase; }
+  .mini-group input, .mini-group select {
+    width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px;
+    font-size: 0.81rem; color: var(--text); background: var(--surface2); outline: none;
+    transition: border-color 0.2s; font-family: var(--sans);
+  }
+  .mini-group input:focus { border-color: var(--accent); background: #fff; }
+
+  /* ── Top bar ── */
+  .topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap; gap: 12px;
+  }
+  .topbar-left h1 { font-size: 1.2rem; font-weight: 700; }
+  .topbar-left p  { font-size: 0.78rem; color: var(--muted); margin-top: 4px; max-width: 560px; line-height: 1.55; }
+  .topbar-right   { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .pill {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 20px; padding: 6px 14px; font-size: 0.78rem; cursor: pointer;
+    transition: border-color 0.2s; white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .pill:hover { border-color: var(--accent); }
+  .pill-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .pill-label { font-weight: 600; }
+  .pill-sub   { color: var(--muted); font-size: 0.7rem; font-family: var(--mono); }
+
+  /* ── Network bar ── */
+  .network-bar {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 16px; margin-bottom: 18px;
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+    overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .network-bar span { white-space: nowrap; }
+  .net-live { color: var(--green); font-weight: 700; }
+  .net-sep  { color: var(--border); }
+  .net-val  { color: var(--text); font-weight: 600; }
+
+  /* ── Grids ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 1100px) { .grid4 { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 900px)  { .grid2 { grid-template-columns: 1fr; } }
+  @media (max-width: 580px)  { .grid4 { grid-template-columns: 1fr; } }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .card-title {
+    font-size: 0.68rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+  }
+
+  .stat-card { text-align: center; }
+  .stat-value  { font-size: 2rem; font-weight: 700; line-height: 1; margin-bottom: 4px; font-family: var(--mono); }
+  .stat-label  { font-size: 0.74rem; color: var(--muted); }
+  .stat-change { font-size: 0.7rem; margin-top: 5px; font-weight: 600; min-height: 16px; }
+
+  /* Result card */
+  .result-rate { font-size: 2rem; font-weight: 700; font-family: var(--mono); line-height: 1; margin-bottom: 4px; }
+  .result-meta { font-size: 0.7rem; color: var(--muted); line-height: 1.75; font-family: var(--mono); margin-top: 6px; }
+  .result-diff { font-size: 0.71rem; font-weight: 700; margin-top: 5px; }
+
+  .c-green { color: var(--green); }
+  .c-amber { color: var(--amber); }
+  .c-red   { color: var(--red);   }
+  .c-blue  { color: var(--accent);}
+
+  /* ── Log table ── */
+  .log-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .log-table th {
+    text-align: left; padding: 7px 10px; background: var(--surface2);
+    color: var(--muted); font-weight: 700; font-size: 0.67rem;
+    border-bottom: 1px solid var(--border); font-family: var(--mono);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .log-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  .log-table tr:last-child td { border-bottom: none; }
+  .log-table tr:hover td { background: var(--surface2); }
+  .tx-hash { font-family: var(--mono); font-size: 0.67rem; color: var(--accent); cursor: pointer; }
+  .tx-hash:hover { text-decoration: underline; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.67rem; font-weight: 700; font-family: var(--mono); }
+  .badge-green { background: #dcfce7; color: var(--green); border: 1px solid #bbf7d0; }
+  .badge-red   { background: #fee2e2; color: var(--red);   border: 1px solid #fecaca; }
+  .inst-tag { font-size: 0.67rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .bor-tag  { display:inline-block; font-size: 0.67rem; padding: 2px 7px; border-radius: 4px; background: #f1f5f9; color: var(--muted); border: 1px solid var(--border); font-family: var(--mono); }
+
+  /* ── Form ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin-bottom: 16px; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+  .form-group label { display: block; font-size: 0.74rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; font-family: var(--mono); }
+  .form-group .hint { font-size: 0.68rem; color: var(--muted); margin-top: 3px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 0.83rem; color: var(--text); background: var(--surface2); outline: none;
+    transition: border-color 0.2s; font-family: var(--sans);
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); background: #fff; }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 10px 22px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: background 0.2s; font-family: var(--sans);
+  }
+  .btn-primary:hover    { background: #1d4ed8; }
+  .btn-primary:disabled { background: #bfdbfe; color: #93c5fd; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent; color: var(--muted); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 7px 14px; font-size: 0.76rem; cursor: pointer;
+    transition: all 0.2s; font-family: var(--sans);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── Tx modal ── */
+  .tx-modal-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px 32px; width: 520px; max-width: 95vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  .tx-modal-box h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 18px; color: var(--accent); font-family: var(--mono); }
+  .tx-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; gap: 16px; }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-key { color: var(--muted); font-family: var(--mono); flex-shrink: 0; }
+  .tx-val { font-family: var(--mono); color: var(--text); text-align: right; word-break: break-all; }
+
+  canvas { max-height: 220px; }
+  .section-desc { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; line-height: 1.6; }
+  .api-error { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 12px 16px; font-size: 0.8rem; color: #9a3412; margin-bottom: 16px; line-height: 1.6; }
+  .api-error code { background: #ffedd5; padding: 1px 6px; border-radius: 3px; font-family: var(--mono); font-size: 0.75rem; }
+  .row-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ── Institution login (full-screen first) ── -->
+<div class="overlay open" id="inst-overlay" style="background:var(--bg)">
+  <div class="modal-box">
+    <h2>Select Institution</h2>
+    <p>Choose the financial institution you are logging in as. Only approved institutions may write records to the shared ledger.</p>
+    <div class="inst-list">
+      <button class="inst-btn" onclick="loginInst('HSBC Hong Kong','0xInst_HSBC_7f3a9b2c','🏦','#2563eb')">
+        <div class="inst-icon" style="background:#dbeafe">🏦</div>
+        <div><div class="inst-name">HSBC Hong Kong</div><div class="inst-addr">0xInst_HSBC_7f3a9b2c · Approved ✓</div></div>
+      </button>
+      <button class="inst-btn" onclick="loginInst('Hang Seng Bank','0xInst_HangS_4d8e1f0a','🏛️','#16a34a')">
+        <div class="inst-icon" style="background:#dcfce7">🏛️</div>
+        <div><div class="inst-name">Hang Seng Bank</div><div class="inst-addr">0xInst_HangS_4d8e1f0a · Approved ✓</div></div>
+      </button>
+      <button class="inst-btn" onclick="loginInst('Bank of China (HK)','0xInst_BOC_2c6a0d5e','🏢','#d97706')">
+        <div class="inst-icon" style="background:#fef3c7">🏢</div>
+        <div><div class="inst-name">Bank of China (HK)</div><div class="inst-addr">0xInst_BOC_2c6a0d5e · Approved ✓</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Borrower selector modal ── -->
+<div class="overlay" id="borrower-overlay">
+  <div class="modal-box" style="width:560px;max-height:90vh;overflow-y:auto">
+    <h2>Select Borrower</h2>
+    <p>Choose an existing borrower or register a new one. Each borrower has an independent repayment history on the shared ledger.</p>
+    <div class="borrower-list" id="borrower-list"></div>
+    <div class="divider">
+      <h4>Register New Borrower</h4>
+      <div class="mini-grid">
+        <div class="mini-group"><label>Full Name</label><input type="text" id="nb_name" placeholder="e.g. Chan Tai Man"></div>
+        <div class="mini-group"><label>FICO Score</label><input type="number" id="nb_fico" value="640" min="300" max="850"></div>
+        <div class="mini-group"><label>Annual Income (USD)</label><input type="number" id="nb_income" value="55000"></div>
+        <div class="mini-group"><label>DTI (%)</label><input type="number" id="nb_dti" value="18" min="0" max="100" step="0.1"></div>
+        <div class="mini-group"><label>Credit History (days)</label><input type="number" id="nb_days" value="1200" min="0"></div>
+        <div class="mini-group"><label>Revol. Utilisation (%)</label><input type="number" id="nb_revutil" value="60" min="0" max="100"></div>
+        <div class="mini-group"><label>Revol. Balance (USD)</label><input type="number" id="nb_revolbal" value="6000" min="0"></div>
+        <div class="mini-group"><label>Enquiries (6 months)</label><input type="number" id="nb_inq" value="2" min="0" max="20"></div>
+        <div class="mini-group"><label>Late Payments (2 yrs)</label><input type="number" id="nb_delinq" value="3" min="0" max="20"></div>
+        <div class="mini-group"><label>Public Records</label><input type="number" id="nb_pub" value="0" min="0" max="10"></div>
+      </div>
+      <button class="btn-primary" id="nb-btn" onclick="registerBorrower()">Register &amp; Calculate Initial Rate</button>
+      <div id="nb-result" style="margin-top:10px;font-size:0.78rem;color:var(--muted);font-family:var(--mono)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tx detail modal ── -->
+<div class="overlay" id="tx-overlay">
+  <div class="tx-modal-box">
+    <h3>// Transaction Receipt</h3>
+    <div id="tx-modal-body"></div>
+    <div style="margin-top:18px;text-align:right"><button class="btn-ghost" onclick="closeTxModal()">Close</button></div>
+  </div>
+</div>
+
+<!-- ── Top bar ── -->
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>Blockchain Dynamic Interest Rate System</h1>
+    <p>Repayment records are written to a shared tamper-proof ledger. The ML model reads this history and recalculates each borrower's interest rate automatically.</p>
+  </div>
+  <div class="topbar-right">
+    <div class="pill" onclick="showBorrowerModal()">
+      <div class="pill-dot" style="background:#8b5cf6"></div>
+      <span class="pill-label" id="borrower-pill-name">—</span>
+      <span class="pill-sub" id="borrower-pill-addr"></span>
+    </div>
+    <div class="pill" onclick="showInstModal()">
+      <div class="pill-dot" id="inst-dot" style="background:#2563eb"></div>
+      <span class="pill-label" id="inst-pill-name">—</span>
+      <span class="pill-sub" id="inst-pill-addr"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Network bar ── -->
+<div class="network-bar">
+  <span class="net-live">● SIMNET</span><span class="net-sep">|</span>
+  <span>Chain ID: <span class="net-val">31337</span></span><span class="net-sep">|</span>
+  <span>Block: <span class="net-val" id="net-block">—</span></span><span class="net-sep">|</span>
+  <span>Gas: <span class="net-val" id="net-gas">—</span> gwei</span><span class="net-sep">|</span>
+  <span>Pending: <span class="net-val" id="net-pending">0</span> tx</span><span class="net-sep">|</span>
+  <span>Contract: <span class="net-val">0xLoanRepay_8b3f2e1d</span></span>
+</div>
+
+<div id="api-error-banner"></div>
+
+<!-- ── 4 stat cards ── -->
+<div class="grid4">
+  <div class="card stat-card">
+    <div class="card-title">Current Interest Rate</div>
+    <div class="stat-value c-red" id="stat-rate">--%</div>
+    <div class="stat-label">Predicted by Random Forest</div>
+    <div class="stat-change" id="stat-change"></div>
+  </div>
+  <div class="card stat-card">
+    <div class="card-title">On-Time Repayments</div>
+    <div class="stat-value c-green" id="stat-ontime">0</div>
+    <div class="stat-label">Out of <span id="stat-total">0</span> total records</div>
+  </div>
+  <div class="card stat-card">
+    <div class="card-title">Current FICO Score</div>
+    <div class="stat-value c-blue" id="stat-fico">—</div>
+    <div class="stat-label">Updates with each new record</div>
+  </div>
+  <div class="card stat-card" id="result-card">
+    <div class="card-title">Last Submission Result</div>
+    <div style="color:var(--muted);font-size:0.78rem;padding-top:20px;font-family:var(--mono)">No submission yet</div>
+  </div>
+</div>
+
+<!-- ── Chart + Ledger ── -->
+<div class="grid2">
+  <div class="card">
+    <div class="card-title">
+      Interest Rate Over Time —
+      <span id="chart-borrower-label" style="text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600">—</span>
+    </div>
+    <canvas id="rateChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Blockchain Repayment Ledger</div>
+    <p class="section-desc">Every row is an immutable record on the shared ledger. All institutions see the same data. Click a tx hash to inspect the full receipt.</p>
+    <div class="row-flex">
+      <span style="font-size:0.74rem;color:var(--muted)">Showing: <strong id="ledger-filter-label">All borrowers</strong></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" onclick="toggleLedgerFilter()">Filter by borrower</button>
+        <button class="btn-ghost" onclick="clearLedger()">Clear all</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="log-table">
+        <thead><tr><th>#</th><th>Borrower</th><th>Amount</th><th>Status</th><th>FICO</th><th>Institution</th><th>Tx Hash</th></tr></thead>
+        <tbody id="log-body">
+          <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;font-family:var(--mono);font-size:0.74rem">No records yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Submit repayment ── -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title">Submit Repayment — Write to Ledger</div>
+  <p class="section-desc" id="form-borrower-desc">Select a borrower to begin.</p>
+  <div class="form-grid">
+    <div class="form-group"><label>Amount Paid (USD)</label><input type="number" id="f_amount" value="1000" min="1"></div>
+    <div class="form-group"><label>Payment Status</label>
+      <select id="f_ontime"><option value="true">On time</option><option value="false">Late</option></select></div>
+    <div class="form-group"><label>Loan Purpose</label>
+      <select id="f_purpose">
+        <option value="debt_consolidation">Debt Consolidation</option>
+        <option value="credit_card">Credit Card</option>
+        <option value="home_improvement">Home Improvement</option>
+        <option value="small_business">Small Business</option>
+        <option value="major_purchase">Major Purchase</option>
+        <option value="educational">Educational</option>
+        <option value="all_other">Other</option>
+      </select></div>
+    <div class="form-group"><label>Meets Lending Criteria?</label>
+      <select id="f_creditpolicy"><option value="1">Yes</option><option value="0">No</option></select></div>
+    <div class="form-group"><label>FICO Credit Score</label><input type="number" id="f_fico" value="650" min="300" max="850"></div>
+    <div class="form-group"><label>Annual Income (USD)</label><input type="number" id="f_income" value="60000" min="1"></div>
+    <div class="form-group"><label>Debt-to-Income Ratio (%)</label><input type="number" id="f_dti" value="16" min="0" max="100" step="0.1"></div>
+    <div class="form-group"><label>Credit History Length (days)</label><input type="number" id="f_days" value="1500" min="0"></div>
+    <div class="form-group"><label>Unpaid Credit Balance (USD)</label><input type="number" id="f_revolbal" value="5000" min="0"></div>
+    <div class="form-group"><label>Credit Utilisation (%)</label><input type="number" id="f_revutil" value="55" min="0" max="100"></div>
+    <div class="form-group"><label>Credit Enquiries (6 months)</label><input type="number" id="f_inq" value="1" min="0" max="20"></div>
+    <div class="form-group"><label>Late Payments (2 years)</label><input type="number" id="f_delinq" value="2" min="0" max="20"></div>
+    <div class="form-group"><label>Public Records</label><input type="number" id="f_pub" value="0" min="0" max="10"></div>
+  </div>
+  <button class="btn-primary" id="add-btn" onclick="addRepayment()">Submit Repayment &amp; Write to Ledger</button>
+</div>
+
+<script>
+const API    = 'http://localhost:5000';
+const LS_KEY = 'blockchain_v2';
+
+// ── Blockchain simulation ─────────────────────────────────────────────────────
+let blockNumber = 18420000 + Math.floor(Math.random()*5000);
+let gasPrice    = (Math.random()*20+8).toFixed(1);
+setInterval(() => {
+  blockNumber += Math.floor(Math.random()*2);
+  gasPrice = Math.max(5, parseFloat(gasPrice)+(Math.random()-0.5)*0.4).toFixed(1);
+  document.getElementById('net-block').textContent = blockNumber.toLocaleString();
+  document.getElementById('net-gas').textContent   = gasPrice;
+}, 3000);
+document.getElementById('net-block').textContent = blockNumber.toLocaleString();
+document.getElementById('net-gas').textContent   = gasPrice;
+
+function realTxHash() {
+  const h='0123456789abcdef';
+  return '0x'+Array.from({length:64},()=>h[Math.floor(Math.random()*16)]).join('');
+}
+function shortHash(h){ return h.slice(0,10)+'...'+h.slice(-8); }
+function simulateGas(){ const u=Math.floor(Math.random()*30000)+60000; return { gasUsed:u, gasFeeEth:((u*parseFloat(gasPrice))/1e9).toFixed(6) }; }
+function toLogIncome(usd){ return Math.log(Math.max(usd,1)); }
+function rateColor(r){ return r<=12?'#16a34a':r<=14?'#d97706':'#dc2626'; }
+function rateClass(r){ return r<=12?'c-green':r<=14?'c-amber':'c-red'; }
+
+// ── Default borrowers ─────────────────────────────────────────────────────────
+const DEFAULTS = [
+  { id:'b001', name:'Chan Tai Man',  addr:'0xBorr_CTM_a1b2c3d4', fico:700, income:80000, dti:13, days:1560, revolbal:4500, revutil:42, inq:1, delinq:0, pub:0 },
+  { id:'b002', name:'Wong Siu Ying', addr:'0xBorr_WSY_e5f6a7b8', fico:630, income:48000, dti:22, days:900,  revolbal:9000, revutil:74, inq:3, delinq:4, pub:0 },
+  { id:'b003', name:'Lee Ka Wai',    addr:'0xBorr_LKW_c9d0e1f2', fico:670, income:65000, dti:17, days:1300, revolbal:6200, revutil:58, inq:2, delinq:2, pub:0 },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentInst     = null;
+let currentBorrower = null;
+let borrowers       = [];
+let allRepayments   = [];
+let ledgerShowAll   = true;
+let chartObj        = null;
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+function save() { localStorage.setItem(LS_KEY, JSON.stringify({ borrowers, allRepayments })); }
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    borrowers     = d.borrowers     || [];
+    allRepayments = d.allRepayments || [];
+    // Ensure default borrowers always exist
+    DEFAULTS.forEach(def => { if (!borrowers.find(b=>b.id===def.id)) borrowers.unshift({...def}); });
+    return true;
+  } catch(e){ return false; }
+}
+
+function clearLedger() {
+  if (!confirm('Clear the entire ledger? This cannot be undone.')) return;
+  allRepayments = [];
+  borrowers.forEach(b => { b.rateHistory = null; b.initialRate = null; });
+  save();
+  rebuildLogTable();
+  if (currentBorrower) {
+    fetchAndSelect(currentBorrower.id);
+  }
+}
+
+// ── Institution ───────────────────────────────────────────────────────────────
+function loginInst(name, addr, icon, color) {
+  currentInst = { name, addr, icon, color };
+  document.getElementById('inst-overlay').classList.remove('open');
+  document.getElementById('inst-dot').style.background   = color;
+  document.getElementById('inst-pill-name').textContent  = name;
+  document.getElementById('inst-pill-addr').textContent  = addr.slice(0,16)+'...';
+}
+function showInstModal() { document.getElementById('inst-overlay').classList.add('open'); }
+
+// ── Borrower modal ────────────────────────────────────────────────────────────
+function showBorrowerModal() { renderBorrowerList(); document.getElementById('borrower-overlay').classList.add('open'); }
+function closeBorrowerModal(){ document.getElementById('borrower-overlay').classList.remove('open'); }
+
+function getLastRate(b) {
+  if (b.rateHistory && b.rateHistory.length>0) return b.rateHistory[b.rateHistory.length-1].rate;
+  return b.initialRate || null;
+}
+
+function renderBorrowerList() {
+  const el = document.getElementById('borrower-list');
+  el.innerHTML = '';
+  borrowers.forEach(b => {
+    const lr  = getLastRate(b);
+    const rc  = lr!==null ? rateColor(lr) : 'var(--muted)';
+    const act = currentBorrower && currentBorrower.id===b.id;
+    el.innerHTML += `
+      <button class="borrower-btn${act?' active':''}" onclick="fetchAndSelect('${b.id}')">
+        <div>
+          <div class="borrower-name">${b.name}</div>
+          <div class="borrower-meta">${b.addr} · FICO ${b.fico}</div>
+        </div>
+        <div class="borrower-rate" style="color:${rc}">${lr!==null?lr.toFixed(2)+'%':'—'}</div>
+      </button>`;
+  });
+}
+
+async function fetchAndSelect(id) {
+  const b = borrowers.find(x=>x.id===id);
+  if (!b) return;
+  if (!b.rateHistory || b.rateHistory.length===0) await fetchInitialRate(b);
+  selectBorrower(b);
+  closeBorrowerModal();
+}
+
+function selectBorrower(b) {
+  currentBorrower = b;
+
+  // Topbar pill
+  document.getElementById('borrower-pill-name').textContent = b.name;
+  document.getElementById('borrower-pill-addr').textContent = b.addr.slice(0,16)+'...';
+  document.getElementById('chart-borrower-label').textContent = b.name;
+  document.getElementById('form-borrower-desc').textContent =
+    `Submitting repayment for: ${b.name} (${b.addr})`;
+
+  // Pre-fill form with borrower's current profile
+  // NOTE: each field is set once from borrower data — user can override manually
+  document.getElementById('f_fico').value    = b.fico;
+  document.getElementById('f_income').value  = b.income;
+  document.getElementById('f_dti').value     = b.dti;
+  document.getElementById('f_days').value    = b.days;
+  document.getElementById('f_revolbal').value= b.revolbal;
+  document.getElementById('f_revutil').value = b.revutil;
+  document.getElementById('f_inq').value     = b.inq;
+  document.getElementById('f_delinq').value  = b.delinq;
+  document.getElementById('f_pub').value     = b.pub;
+
+  // Chart
+  buildChart(b);
+
+  // Stats
+  const lr = getLastRate(b);
+  if (lr!==null) {
+    updateRateCard(lr, null);
+    document.getElementById('stat-fico').textContent = b.fico;
+  }
+  const myRep = allRepayments.filter(r=>r.borrower_id===b.id);
+  document.getElementById('stat-ontime').textContent = myRep.filter(r=>r.onTime).length;
+  document.getElementById('stat-total').textContent  = myRep.length;
+
+  rebuildLogTable();
+}
+
+async function fetchInitialRate(b) {
+  try {
+    const res  = await fetch(`${API}/predict`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        'credit.policy':1, 'fico':b.fico, 'dti':b.dti,
+        'log.annual.inc':toLogIncome(b.income), 'days.with.cr.line':b.days,
+        'revol.bal':b.revolbal, 'revol.util':b.revutil,
+        'inq.last.6mths':b.inq, 'delinq.2yrs':b.delinq, 'pub.rec':b.pub,
+        'purpose':'debt_consolidation'
+      })
+    });
+    const data = await res.json();
+    b.initialRate  = data.predicted_rate;
+    b.rateHistory  = [{ label:'Month 1', rate: data.predicted_rate }];
+    save();
+  } catch(e){}
+}
+
+// ── Register new borrower ─────────────────────────────────────────────────────
+async function registerBorrower() {
+  const name = document.getElementById('nb_name').value.trim();
+  if (!name) { alert('Please enter a name.'); return; }
+  const btn = document.getElementById('nb-btn');
+  btn.disabled = true; btn.textContent = 'Calculating initial rate...';
+
+  const b = {
+    id:'b'+Date.now(), name,
+    addr:'0xBorr_'+name.replace(/\s/g,'').slice(0,4).toUpperCase()+'_'+Math.random().toString(16).slice(2,10),
+    fico:    +document.getElementById('nb_fico').value,
+    income:  +document.getElementById('nb_income').value,
+    dti:     +document.getElementById('nb_dti').value,
+    days:    +document.getElementById('nb_days').value,
+    revolbal:+document.getElementById('nb_revolbal').value,
+    revutil: +document.getElementById('nb_revutil').value,
+    inq:     +document.getElementById('nb_inq').value,
+    delinq:  +document.getElementById('nb_delinq').value,
+    pub:     +document.getElementById('nb_pub').value,
+    rateHistory: null, initialRate: null,
+  };
+
+  await fetchInitialRate(b);
+  borrowers.push(b); save();
+
+  const rate = b.initialRate;
+  document.getElementById('nb-result').innerHTML = rate
+    ? `✓ ${name} registered — Initial rate: <strong style="color:${rateColor(rate)}">${rate.toFixed(2)}%</strong>`
+    : '✓ Registered (API offline — rate pending)';
+
+  btn.disabled=false; btn.textContent='Register & Calculate Initial Rate';
+  renderBorrowerList();
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+function buildChart(b) {
+  const hist = (b && b.rateHistory) ? b.rateHistory : [];
+  const ctx  = document.getElementById('rateChart').getContext('2d');
+  if (chartObj) chartObj.destroy();
+  chartObj = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: hist.map(d=>d.label),
+      datasets:[{ label:'Predicted Rate (%)', data:hist.map(d=>d.rate),
+        borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,0.06)',
+        pointBackgroundColor: hist.map(d=>rateColor(d.rate)),
+        pointRadius:5, tension:0.35, fill:true }]
+    },
+    options:{ responsive:true,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{label:c=>` ${c.parsed.y.toFixed(2)}%`},
+          backgroundColor:'#1e293b', titleColor:'#94a3b8', bodyColor:'#f1f5f9', borderColor:'#334155', borderWidth:1 }},
+      scales:{
+        y:{ min:10, max:18, ticks:{color:'#94a3b8',callback:v=>v+'%'}, grid:{color:'#f1f5f9'} },
+        x:{ ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'#f1f5f9'} }
+      }
+    }
+  });
+}
+
+// ── Stat cards ────────────────────────────────────────────────────────────────
+function updateRateCard(rate, prevRate) {
+  const el = document.getElementById('stat-rate');
+  el.textContent = rate.toFixed(2)+'%';
+  el.className   = 'stat-value '+rateClass(rate);
+  if (prevRate!==null) {
+    const diff = (rate-prevRate).toFixed(2);
+    const chEl = document.getElementById('stat-change');
+    if      (diff<0)  chEl.innerHTML=`<span class="c-green">▼ ${Math.abs(diff)}% from previous</span>`;
+    else if (diff>0)  chEl.innerHTML=`<span class="c-red">▲ ${diff}% from previous</span>`;
+    else              chEl.innerHTML=`<span style="color:var(--muted)">No change</span>`;
+  }
+}
+
+function updateResultCard(rate, prevRate, amount, onTime, fico, blockNum, gasUsed, gasFeeEth) {
+  const diff    = (rate-prevRate).toFixed(2);
+  const diffStr = diff<=0
+    ? `<span class="c-green">▼ ${Math.abs(diff)}% from previous</span>`
+    : `<span class="c-red">▲ ${diff}% from previous</span>`;
+  document.getElementById('result-card').innerHTML = `
+    <div class="card-title">Last Submission Result</div>
+    <div class="result-rate" style="color:${rateColor(rate)}">${rate.toFixed(2)}%</div>
+    <div class="result-meta">
+      $${amount.toLocaleString()} · ${onTime?'ON TIME ✓':'LATE ✗'}<br>
+      FICO ${fico} · Block ${blockNum.toLocaleString()}<br>
+      Gas ${gasUsed.toLocaleString()} · ${gasFeeEth} ETH
+    </div>
+    <div class="result-diff">${diffStr}</div>`;
+}
+
+// ── Submit repayment ──────────────────────────────────────────────────────────
+async function addRepayment() {
+  if (!currentInst)     { alert('Please select an institution first.'); showInstModal();     return; }
+  if (!currentBorrower) { alert('Please select a borrower first.');     showBorrowerModal(); return; }
+
+  const btn = document.getElementById('add-btn');
+  btn.disabled=true; btn.textContent='Broadcasting transaction...';
+  document.getElementById('net-pending').textContent='1';
+
+  const fico   = +document.getElementById('f_fico').value;
+  const income = +document.getElementById('f_income').value;
+  const onTime = document.getElementById('f_ontime').value==='true';
+  const amount = +document.getElementById('f_amount').value;
+
+  // Persist updated profile back to borrower (except days — user controls that manually)
+  currentBorrower.fico     = fico;
+  currentBorrower.income   = income;
+  currentBorrower.dti      = +document.getElementById('f_dti').value;
+  currentBorrower.revolbal = +document.getElementById('f_revolbal').value;
+  currentBorrower.revutil  = +document.getElementById('f_revutil').value;
+  currentBorrower.inq      = +document.getElementById('f_inq').value;
+  currentBorrower.delinq   = +document.getElementById('f_delinq').value;
+  currentBorrower.pub      = +document.getElementById('f_pub').value;
+
+  const payload = {
+    'credit.policy':     +document.getElementById('f_creditpolicy').value,
+    'fico':              fico,
+    'dti':               currentBorrower.dti,
+    'log.annual.inc':    toLogIncome(income),
+    'days.with.cr.line': +document.getElementById('f_days').value,
+    'revol.bal':         currentBorrower.revolbal,
+    'revol.util':        currentBorrower.revutil,
+    'inq.last.6mths':    currentBorrower.inq,
+    'delinq.2yrs':       currentBorrower.delinq,
+    'pub.rec':           currentBorrower.pub,
+    'purpose':           document.getElementById('f_purpose').value,
+  };
+
+  try {
+    const res  = await fetch(`${API}/predict`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data = await res.json();
+    const newRate = data.predicted_rate;
+
+    await new Promise(r=>setTimeout(r,600));
+    blockNumber++;
+    document.getElementById('net-block').textContent   = blockNumber.toLocaleString();
+    document.getElementById('net-pending').textContent = '0';
+
+    const { gasUsed, gasFeeEth } = simulateGas();
+    const myRep    = allRepayments.filter(r=>r.borrower_id===currentBorrower.id);
+    const prevRate = currentBorrower.rateHistory && currentBorrower.rateHistory.length
+      ? currentBorrower.rateHistory[currentBorrower.rateHistory.length-1].rate
+      : newRate;
+
+    allRepayments.push({
+      borrower_id: currentBorrower.id, borrower_name: currentBorrower.name,
+      amount, onTime, fico, tx:realTxHash(), blockNumber, timestamp:Date.now(),
+      institution_name:currentInst.name, institution_addr:currentInst.addr, institution_color:currentInst.color,
+      gasUsed, gasFeeEth,
+    });
+
+    if (!currentBorrower.rateHistory)
+      currentBorrower.rateHistory = [{label:'Month 1', rate:currentBorrower.initialRate||newRate}];
+    currentBorrower.rateHistory.push({ label:`#${myRep.length+1}`, rate:newRate });
+
+    save();
+    rebuildLogTable();
+    buildChart(currentBorrower);
+    updateRateCard(newRate, prevRate);
+    updateResultCard(newRate, prevRate, amount, onTime, fico, blockNumber, gasUsed, gasFeeEth);
+
+    document.getElementById('stat-fico').textContent   = fico;
+    const updated = allRepayments.filter(r=>r.borrower_id===currentBorrower.id);
+    document.getElementById('stat-ontime').textContent = updated.filter(r=>r.onTime).length;
+    document.getElementById('stat-total').textContent  = updated.length;
+
+  } catch(e){
+    document.getElementById('net-pending').textContent='0';
+    alert('API call failed — make sure python app.py is running.');
+  }
+
+  btn.disabled=false; btn.textContent='Submit Repayment & Write to Ledger';
+}
+
+// ── Ledger table ──────────────────────────────────────────────────────────────
+function toggleLedgerFilter() {
+  ledgerShowAll = !ledgerShowAll;
+  document.getElementById('ledger-filter-label').textContent =
+    ledgerShowAll ? 'All borrowers' : (currentBorrower ? currentBorrower.name : 'All borrowers');
+  rebuildLogTable();
+}
+
+function rebuildLogTable() {
+  const tbody   = document.getElementById('log-body');
+  const records = ledgerShowAll ? allRepayments : allRepayments.filter(r=>currentBorrower&&r.borrower_id===currentBorrower.id);
+  tbody.innerHTML = '';
+  if (!records.length) {
+    tbody.innerHTML=`<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;font-family:var(--mono);font-size:0.74rem">No records yet</td></tr>`;
+    return;
+  }
+  [...records].reverse().forEach((r,i) => {
+    const idx = records.length-i;
+    const ic  = r.institution_color||'#2563eb';
+    const row = document.createElement('tr');
+    row.innerHTML=`
+      <td style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">${idx}</td>
+      <td><span class="bor-tag">${r.borrower_name||'—'}</span></td>
+      <td style="font-family:var(--mono)">$${r.amount.toLocaleString()}</td>
+      <td><span class="badge ${r.onTime?'badge-green':'badge-red'}">${r.onTime?'ON TIME':'LATE'}</span></td>
+      <td style="font-family:var(--mono)">${r.fico}</td>
+      <td><span class="inst-tag" style="background:${ic}18;color:${ic};border:1px solid ${ic}33">${r.institution_name||'—'}</span></td>
+      <td class="tx-hash" onclick='showTxModal(${JSON.stringify(r).replace(/'/g,"\\'")})'>${shortHash(r.tx)}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+// ── Tx modal ──────────────────────────────────────────────────────────────────
+function showTxModal(r) {
+  document.getElementById('tx-modal-body').innerHTML = [
+    ['Tx Hash',   r.tx],
+    ['Block',     r.blockNumber.toLocaleString()],
+    ['Timestamp', new Date(r.timestamp).toLocaleString('en-HK',{timeZone:'Asia/Hong_Kong'})],
+    ['From',      r.institution_addr],
+    ['Contract',  '0xLoanRepay_8b3f2e1d'],
+    ['Borrower',  `${r.borrower_name} (${r.borrower_id})`],
+    ['Amount',    '$'+r.amount.toLocaleString()],
+    ['Status',    r.onTime?'✓ ON TIME':'✗ LATE'],
+    ['Gas Used',  r.gasUsed.toLocaleString()],
+    ['Gas Fee',   r.gasFeeEth+' ETH'],
+    ['Function',  'recordRepayment(address,uint256,uint256,bool)'],
+    ['Network',   'SIMNET (Chain ID 31337)'],
+  ].map(([k,v])=>`<div class="tx-row"><span class="tx-key">${k}</span><span class="tx-val">${v}</span></div>`).join('');
+  document.getElementById('tx-overlay').classList.add('open');
+}
+function closeTxModal(){ document.getElementById('tx-overlay').classList.remove('open'); }
+
+document.getElementById('tx-overlay').addEventListener('click',      e=>{ if(e.target===document.getElementById('tx-overlay'))      closeTxModal();      });
+document.getElementById('borrower-overlay').addEventListener('click', e=>{ if(e.target===document.getElementById('borrower-overlay')) closeBorrowerModal(); });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const restored = loadData();
+  if (!restored || borrowers.length===0) borrowers = DEFAULTS.map(b=>({...b}));
+
+  try { await fetch(`${API}/health`); }
+  catch(e){
+    document.getElementById('api-error-banner').innerHTML=`
+      <div class="api-error"><strong>Cannot connect to the Python model.</strong>
+      Run <code>python app.py</code> in your project folder, then refresh.</div>`;
+  }
+
+  await fetchAndSelect(borrowers[0].id);
+}
+
+init();
+</script>
+</body>
+</html>
