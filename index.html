@@ -248,15 +248,15 @@
       <h4>Register New Borrower</h4>
       <div class="mini-grid">
         <div class="mini-group"><label>Full Name</label><input type="text" id="nb_name" placeholder="e.g. Chan Tai Man"></div>
-        <div class="mini-group"><label>FICO Score</label><input type="number" id="nb_fico" value="640" min="300" max="850"></div>
-        <div class="mini-group"><label>Annual Income (USD)</label><input type="number" id="nb_income" value="55000"></div>
-        <div class="mini-group"><label>DTI (%)</label><input type="number" id="nb_dti" value="18" min="0" max="100" step="0.1"></div>
-        <div class="mini-group"><label>Credit History (days)</label><input type="number" id="nb_days" value="1200" min="0"></div>
-        <div class="mini-group"><label>Revol. Utilisation (%)</label><input type="number" id="nb_revutil" value="60" min="0" max="100"></div>
-        <div class="mini-group"><label>Revol. Balance (USD)</label><input type="number" id="nb_revolbal" value="6000" min="0"></div>
-        <div class="mini-group"><label>Enquiries (6 months)</label><input type="number" id="nb_inq" value="2" min="0" max="20"></div>
-        <div class="mini-group"><label>Late Payments (2 yrs)</label><input type="number" id="nb_delinq" value="3" min="0" max="20"></div>
-        <div class="mini-group"><label>Public Records</label><input type="number" id="nb_pub" value="0" min="0" max="10"></div>
+        <div class="mini-group"><label>FICO Score</label><input type="number" id="nb_fico" min="300" max="850" placeholder="300–850"></div>
+        <div class="mini-group"><label>Annual Income (USD)</label><input type="number" id="nb_income" placeholder="e.g. 55000"></div>
+        <div class="mini-group"><label>DTI (%)</label><input type="number" id="nb_dti" min="0" max="100" step="0.1" placeholder="e.g. 18"></div>
+        <div class="mini-group"><label>Credit History (days)</label><input type="number" id="nb_days" min="0" placeholder="e.g. 1200"></div>
+        <div class="mini-group"><label>Revol. Utilisation (%)</label><input type="number" id="nb_revutil" min="0" max="100" placeholder="0–100"></div>
+        <div class="mini-group"><label>Revol. Balance (USD)</label><input type="number" id="nb_revolbal" min="0" placeholder="e.g. 6000"></div>
+        <div class="mini-group"><label>Enquiries (6 months)</label><input type="number" id="nb_inq" min="0" max="20" placeholder="0–20"></div>
+        <div class="mini-group"><label>Late Payments (2 yrs)</label><input type="number" id="nb_delinq" min="0" max="20" placeholder="0–20"></div>
+        <div class="mini-group"><label>Public Records</label><input type="number" id="nb_pub" min="0" max="10" placeholder="0–10"></div>
       </div>
       <button class="btn-primary" id="nb-btn" onclick="registerBorrower()">Register &amp; Calculate Initial Rate</button>
       <div id="nb-result" style="margin-top:10px;font-size:0.78rem;color:var(--muted);font-family:var(--mono)"></div>
@@ -350,9 +350,9 @@
     </div>
     <div style="overflow-x:auto">
       <table class="log-table">
-        <thead><tr><th>#</th><th>Borrower</th><th>Amount</th><th>Status</th><th>FICO</th><th>Institution</th><th>Tx Hash</th></tr></thead>
+        <thead><tr><th>#</th><th>Borrower</th><th>Address</th><th>Amount</th><th>Status</th><th>FICO</th><th>Due Date</th><th>Institution</th><th>Tx Hash</th></tr></thead>
         <tbody id="log-body">
-          <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;font-family:var(--mono);font-size:0.74rem">No records yet</td></tr>
+          <tr><td colspan="9" style="color:var(--muted);text-align:center;padding:20px;font-family:var(--mono);font-size:0.74rem">No records yet</td></tr>
         </tbody>
       </table>
     </div>
@@ -364,7 +364,7 @@
   <div class="card-title">Submit Repayment — Write to Ledger</div>
   <p class="section-desc" id="form-borrower-desc">Select a borrower to begin.</p>
   <div class="form-grid">
-    <div class="form-group"><label>Amount Paid (USD)</label><input type="number" id="f_amount" value="1000" min="1"></div>
+    <div class="form-group"><label>Amount Paid (USD)</label><input type="number" id="f_amount" min="1" placeholder="e.g. 1000"></div>
     <div class="form-group"><label>Payment Status</label>
       <select id="f_ontime"><option value="true">On time</option><option value="false">Late</option></select></div>
     <div class="form-group"><label>Loan Purpose</label>
@@ -379,15 +379,18 @@
       </select></div>
     <div class="form-group"><label>Meets Lending Criteria?</label>
       <select id="f_creditpolicy"><option value="1">Yes</option><option value="0">No</option></select></div>
-    <div class="form-group"><label>FICO Credit Score</label><input type="number" id="f_fico" value="650" min="300" max="850"></div>
-    <div class="form-group"><label>Annual Income (USD)</label><input type="number" id="f_income" value="60000" min="1"></div>
-    <div class="form-group"><label>Debt-to-Income Ratio (%)</label><input type="number" id="f_dti" value="16" min="0" max="100" step="0.1"></div>
-    <div class="form-group"><label>Credit History Length (days)</label><input type="number" id="f_days" value="1500" min="0"></div>
-    <div class="form-group"><label>Unpaid Credit Balance (USD)</label><input type="number" id="f_revolbal" value="5000" min="0"></div>
-    <div class="form-group"><label>Credit Utilisation (%)</label><input type="number" id="f_revutil" value="55" min="0" max="100"></div>
-    <div class="form-group"><label>Credit Enquiries (6 months)</label><input type="number" id="f_inq" value="1" min="0" max="20"></div>
-    <div class="form-group"><label>Late Payments (2 years)</label><input type="number" id="f_delinq" value="2" min="0" max="20"></div>
-    <div class="form-group"><label>Public Records</label><input type="number" id="f_pub" value="0" min="0" max="10"></div>
+    <div class="form-group"><label>FICO Credit Score</label><input type="number" id="f_fico" min="300" max="850" placeholder="300–850"></div>
+    <div class="form-group"><label>Annual Income (USD)</label><input type="number" id="f_income" min="1" placeholder="e.g. 60000"></div>
+    <div class="form-group"><label>Debt-to-Income Ratio (%)</label><input type="number" id="f_dti" min="0" max="100" step="0.1" placeholder="e.g. 16"></div>
+    <div class="form-group"><label>Credit History Length (days)</label><input type="number" id="f_days" min="0" placeholder="e.g. 1500"></div>
+    <div class="form-group"><label>Unpaid Credit Balance (USD)</label><input type="number" id="f_revolbal" min="0" placeholder="e.g. 5000"></div>
+    <div class="form-group"><label>Credit Utilisation (%)</label><input type="number" id="f_revutil" min="0" max="100" placeholder="0–100"></div>
+    <div class="form-group"><label>Credit Enquiries (6 months)</label><input type="number" id="f_inq" min="0" max="20" placeholder="0–20"></div>
+    <div class="form-group"><label>Late Payments (2 years)</label><input type="number" id="f_delinq" min="0" max="20" placeholder="0–20"></div>
+    <div class="form-group"><label>Public Records</label><input type="number" id="f_pub" min="0" max="10" placeholder="0–10"></div>
+    <div class="form-group"><label>Due Date</label><input type="date" id="f_duedate">
+      <div class="hint">The date this repayment was due — recorded on-chain as a Unix timestamp (dueDate field in LoanRepayment.sol).</div>
+    </div>
   </div>
   <button class="btn-primary" id="add-btn" onclick="addRepayment()">Submit Repayment &amp; Write to Ledger</button>
 </div>
@@ -515,17 +518,8 @@ function selectBorrower(b) {
   document.getElementById('form-borrower-desc').textContent =
     `Submitting repayment for: ${b.name} (${b.addr})`;
 
-  // Pre-fill form with borrower's current profile
-  // NOTE: each field is set once from borrower data — user can override manually
-  document.getElementById('f_fico').value    = b.fico;
-  document.getElementById('f_income').value  = b.income;
-  document.getElementById('f_dti').value     = b.dti;
-  document.getElementById('f_days').value    = b.days;
-  document.getElementById('f_revolbal').value= b.revolbal;
-  document.getElementById('f_revutil').value = b.revutil;
-  document.getElementById('f_inq').value     = b.inq;
-  document.getElementById('f_delinq').value  = b.delinq;
-  document.getElementById('f_pub').value     = b.pub;
+  // Clear form fields when switching borrower — user enters fresh data per submission
+  clearRepaymentForm();
 
   // Chart
   buildChart(b);
@@ -594,6 +588,7 @@ async function registerBorrower() {
 
   btn.disabled=false; btn.textContent='Register & Calculate Initial Rate';
   renderBorrowerList();
+  clearRegisterForm();
 }
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
@@ -652,6 +647,24 @@ function updateResultCard(rate, prevRate, amount, onTime, fico, blockNum, gasUse
     <div class="result-diff">${diffStr}</div>`;
 }
 
+// ── Form reset helpers ────────────────────────────────────────────────────────
+function clearRepaymentForm() {
+  ['f_amount','f_fico','f_income','f_dti','f_days','f_revolbal','f_revutil','f_inq','f_delinq','f_pub'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('f_ontime').selectedIndex      = 0;
+  document.getElementById('f_purpose').selectedIndex     = 0;
+  document.getElementById('f_creditpolicy').selectedIndex= 0;
+  document.getElementById('f_duedate').value = '';
+}
+
+function clearRegisterForm() {
+  ['nb_name','nb_fico','nb_income','nb_dti','nb_days','nb_revolbal','nb_revutil','nb_inq','nb_delinq','nb_pub'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('nb-result').innerHTML = '';
+}
+
 // ── Submit repayment ──────────────────────────────────────────────────────────
 async function addRepayment() {
   if (!currentInst)     { alert('Please select an institution first.'); showInstModal();     return; }
@@ -708,7 +721,9 @@ async function addRepayment() {
 
     allRepayments.push({
       borrower_id: currentBorrower.id, borrower_name: currentBorrower.name,
+      borrower_addr: currentBorrower.addr,
       amount, onTime, fico, tx:realTxHash(), blockNumber, timestamp:Date.now(),
+      dueDate: document.getElementById('f_duedate').value ? new Date(document.getElementById('f_duedate').value).getTime() : null,
       institution_name:currentInst.name, institution_addr:currentInst.addr, institution_color:currentInst.color,
       gasUsed, gasFeeEth,
     });
@@ -727,6 +742,8 @@ async function addRepayment() {
     const updated = allRepayments.filter(r=>r.borrower_id===currentBorrower.id);
     document.getElementById('stat-ontime').textContent = updated.filter(r=>r.onTime).length;
     document.getElementById('stat-total').textContent  = updated.length;
+
+    clearRepaymentForm();
 
   } catch(e){
     document.getElementById('net-pending').textContent='0';
@@ -749,19 +766,23 @@ function rebuildLogTable() {
   const records = ledgerShowAll ? allRepayments : allRepayments.filter(r=>currentBorrower&&r.borrower_id===currentBorrower.id);
   tbody.innerHTML = '';
   if (!records.length) {
-    tbody.innerHTML=`<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;font-family:var(--mono);font-size:0.74rem">No records yet</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:20px;font-family:var(--mono);font-size:0.74rem">No records yet</td></tr>`;
     return;
   }
   [...records].reverse().forEach((r,i) => {
     const idx = records.length-i;
     const ic  = r.institution_color||'#2563eb';
+    const shortAddr = r.borrower_addr ? r.borrower_addr.slice(0,14)+'...' : '—';
+    const dueDateStr = r.dueDate ? new Date(r.dueDate).toLocaleDateString('en-HK') : '—';
     const row = document.createElement('tr');
     row.innerHTML=`
       <td style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">${idx}</td>
       <td><span class="bor-tag">${r.borrower_name||'—'}</span></td>
+      <td style="font-family:var(--mono);font-size:0.67rem;color:var(--accent)" title="${r.borrower_addr||''}">${shortAddr}</td>
       <td style="font-family:var(--mono)">$${r.amount.toLocaleString()}</td>
       <td><span class="badge ${r.onTime?'badge-green':'badge-red'}">${r.onTime?'ON TIME':'LATE'}</span></td>
       <td style="font-family:var(--mono)">${r.fico}</td>
+      <td style="font-family:var(--mono);font-size:0.74rem">${dueDateStr}</td>
       <td><span class="inst-tag" style="background:${ic}18;color:${ic};border:1px solid ${ic}33">${r.institution_name||'—'}</span></td>
       <td class="tx-hash" onclick='showTxModal(${JSON.stringify(r).replace(/'/g,"\\'")})'>${shortHash(r.tx)}</td>`;
     tbody.appendChild(row);
@@ -774,9 +795,11 @@ function showTxModal(r) {
     ['Tx Hash',   r.tx],
     ['Block',     r.blockNumber.toLocaleString()],
     ['Timestamp', new Date(r.timestamp).toLocaleString('en-HK',{timeZone:'Asia/Hong_Kong'})],
+    ['Due Date',  r.dueDate ? new Date(r.dueDate).toLocaleDateString('en-HK') + ' (Unix: '+Math.floor(r.dueDate/1000)+')' : '—'],
     ['From',      r.institution_addr],
     ['Contract',  '0xLoanRepay_8b3f2e1d'],
-    ['Borrower',  `${r.borrower_name} (${r.borrower_id})`],
+    ['Borrower',  `${r.borrower_name}`],
+    ['Borrower Address', r.borrower_addr || '—'],
     ['Amount',    '$'+r.amount.toLocaleString()],
     ['Status',    r.onTime?'✓ ON TIME':'✗ LATE'],
     ['Gas Used',  r.gasUsed.toLocaleString()],
