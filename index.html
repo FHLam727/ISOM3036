@@ -652,7 +652,7 @@ function selectBorrower(b) {
 
   // Topbar pill
   document.getElementById('borrower-pill-name').textContent = b.name;
-  document.getElementById('borrower-pill-addr').textContent = `${b.addr.slice(0,16)}... · ${maskedId}`;
+  document.getElementById('borrower-pill-addr').textContent = b.addr.slice(0,16)+'...';
   document.getElementById('chart-borrower-label').textContent = b.name;
   document.getElementById('form-borrower-desc').textContent =
     `Submitting repayment for: ${b.name} (${b.addr}) · ${maskedId}`;
