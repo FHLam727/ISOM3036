@@ -280,6 +280,7 @@
       <h4>Register New Borrower</h4>
       <div class="mini-grid">
         <div class="mini-group"><label>Full Name</label><input type="text" id="nb_name" placeholder="e.g. Chan Tai Man"></div>
+        <div class="mini-group"><label>ID Number</label><input type="text" id="nb_idno" placeholder="e.g. A123456(7)"></div>
         <div class="mini-group"><label>FICO Score</label><input type="number" id="nb_fico" min="300" max="850" placeholder="300–850"></div>
         <div class="mini-group"><label>Annual Income (USD)</label><input type="number" id="nb_income" placeholder="e.g. 55000"></div>
         <div class="mini-group"><label>DTI (%)</label><input type="number" id="nb_dti" min="0" max="100" step="0.1" placeholder="e.g. 18"></div>
@@ -397,6 +398,16 @@
 <div class="card" style="margin-bottom:16px">
   <div class="card-title">Submit Repayment — Write to Ledger</div>
   <p class="section-desc" id="form-borrower-desc">Select a borrower to begin.</p>
+  <div id="borrower-id-editor" style="display:none;margin-bottom:14px;padding:12px 14px;border:1px solid #fed7aa;background:#fff7ed;border-radius:10px">
+    <div style="font-size:0.78rem;color:#9a3412;line-height:1.5;margin-bottom:10px">This borrower is missing an ID number. Add it once here and it will be saved to local storage.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin:0;min-width:220px;flex:1">
+        <label>ID Number</label>
+        <input type="text" id="existing_idno" placeholder="e.g. A123456(7)">
+      </div>
+      <button class="btn-primary" type="button" onclick="saveBorrowerIdNumber()">Save ID Number</button>
+    </div>
+  </div>
   <div class="form-grid">
     <div class="form-group"><label>Amount Paid (USD)</label><input type="number" id="f_amount" min="1" placeholder="e.g. 1000"></div>
     <div class="form-group"><label>Payment Status</label>
@@ -470,6 +481,17 @@ const INST_CREDENTIALS = {
   '0xInst_BOC_2c6a0d5e': { username:'boc_admin',   password:'boc1234'   },
 };
 
+function normalizeIdNumber(value) {
+  return (value || '').trim().toUpperCase();
+}
+
+function maskIdNumber(value) {
+  const normalized = normalizeIdNumber(value);
+  if (!normalized) return 'Missing ID';
+  if (normalized.length <= 4) return normalized[0] + '*'.repeat(Math.max(normalized.length - 1, 0));
+  return normalized.slice(0, 2) + '*'.repeat(normalized.length - 4) + normalized.slice(-2);
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentInst     = null;
 let pendingInst     = null;
@@ -483,6 +505,13 @@ function setAppShellVisible(isVisible) {
   document.getElementById('app-shell').classList.toggle('hidden', !isVisible);
 }
 
+function toggleBorrowerIdEditor(show, value) {
+  const editor = document.getElementById('borrower-id-editor');
+  const input = document.getElementById('existing_idno');
+  editor.style.display = show ? 'block' : 'none';
+  input.value = value || '';
+}
+
 // ── Persistence ───────────────────────────────────────────────────────────────
 function save() { localStorage.setItem(LS_KEY, JSON.stringify({ borrowers, allRepayments })); }
 
@@ -493,6 +522,8 @@ function loadData() {
     const d = JSON.parse(raw);
     borrowers     = d.borrowers     || [];
     allRepayments = d.allRepayments || [];
+    borrowers.forEach(b => { b.idNumber = normalizeIdNumber(b.idNumber); });
+    allRepayments.forEach(r => { r.borrower_id_number = normalizeIdNumber(r.borrower_id_number); });
     // Ensure default borrowers always exist
     DEFAULTS.forEach(def => { if (!borrowers.find(b=>b.id===def.id)) borrowers.unshift({...def}); });
     return true;
@@ -564,12 +595,16 @@ function showInstModal() {
 function signOutInstitution() {
   currentInst = null;
   pendingInst = null;
+  currentBorrower = null;
   document.getElementById('inst-pill-name').textContent = '—';
   document.getElementById('inst-pill-addr').textContent = '';
   document.getElementById('inst-dot').style.background = '#2563eb';
+  document.getElementById('borrower-pill-name').textContent = '—';
+  document.getElementById('borrower-pill-addr').textContent = '';
   document.getElementById('login-username').value = '';
   document.getElementById('login-password').value = '';
   document.getElementById('login-error').textContent = '';
+  toggleBorrowerIdEditor(false, '');
   setAppShellVisible(false);
   document.getElementById('login-overlay').classList.remove('open');
   document.getElementById('inst-overlay').classList.add('open');
@@ -591,11 +626,12 @@ function renderBorrowerList() {
     const lr  = getLastRate(b);
     const rc  = lr!==null ? rateColor(lr) : 'var(--muted)';
     const act = currentBorrower && currentBorrower.id===b.id;
+    const maskedId = maskIdNumber(b.idNumber);
     el.innerHTML += `
       <button class="borrower-btn${act?' active':''}" onclick="fetchAndSelect('${b.id}')">
         <div>
           <div class="borrower-name">${b.name}</div>
-          <div class="borrower-meta">${b.addr} · FICO ${b.fico}</div>
+          <div class="borrower-meta">${b.addr} · ${maskedId} · FICO ${b.fico}</div>
         </div>
         <div class="borrower-rate" style="color:${rc}">${lr!==null?lr.toFixed(2)+'%':'—'}</div>
       </button>`;
@@ -612,13 +648,15 @@ async function fetchAndSelect(id) {
 
 function selectBorrower(b) {
   currentBorrower = b;
+  const maskedId = maskIdNumber(b.idNumber);
 
   // Topbar pill
   document.getElementById('borrower-pill-name').textContent = b.name;
-  document.getElementById('borrower-pill-addr').textContent = b.addr.slice(0,16)+'...';
+  document.getElementById('borrower-pill-addr').textContent = `${b.addr.slice(0,16)}... · ${maskedId}`;
   document.getElementById('chart-borrower-label').textContent = b.name;
   document.getElementById('form-borrower-desc').textContent =
-    `Submitting repayment for: ${b.name} (${b.addr})`;
+    `Submitting repayment for: ${b.name} (${b.addr}) · ${maskedId}`;
+  toggleBorrowerIdEditor(!normalizeIdNumber(b.idNumber), normalizeIdNumber(b.idNumber));
 
   // Clear form fields when switching borrower — user enters fresh data per submission
   clearRepaymentForm();
@@ -637,6 +675,26 @@ function selectBorrower(b) {
   document.getElementById('stat-total').textContent  = myRep.length;
 
   rebuildLogTable();
+}
+
+function saveBorrowerIdNumber() {
+  if (!currentBorrower) {
+    alert('Please select a borrower first.');
+    return;
+  }
+
+  const idNumber = normalizeIdNumber(document.getElementById('existing_idno').value);
+  if (!idNumber) {
+    alert('Please enter an ID number.');
+    return;
+  }
+
+  currentBorrower.idNumber = idNumber;
+  const target = borrowers.find(b => b.id === currentBorrower.id);
+  if (target) target.idNumber = idNumber;
+  save();
+  selectBorrower(currentBorrower);
+  renderBorrowerList();
 }
 
 async function fetchInitialRate(b) {
@@ -662,12 +720,15 @@ async function fetchInitialRate(b) {
 async function registerBorrower() {
   const name = document.getElementById('nb_name').value.trim();
   if (!name) { alert('Please enter a name.'); return; }
+  const idNumber = normalizeIdNumber(document.getElementById('nb_idno').value);
+  if (!idNumber) { alert('Please enter an ID number.'); return; }
   const btn = document.getElementById('nb-btn');
   btn.disabled = true; btn.textContent = 'Calculating initial rate...';
 
   const b = {
     id:'b'+Date.now(), name,
     addr:'0xBorr_'+name.replace(/\s/g,'').slice(0,4).toUpperCase()+'_'+Math.random().toString(16).slice(2,10),
+    idNumber,
     fico:    +document.getElementById('nb_fico').value,
     income:  +document.getElementById('nb_income').value,
     dti:     +document.getElementById('nb_dti').value,
@@ -761,7 +822,7 @@ function clearRepaymentForm() {
 }
 
 function clearRegisterForm() {
-  ['nb_name','nb_fico','nb_income','nb_dti','nb_days','nb_revolbal','nb_revutil','nb_inq','nb_delinq','nb_pub'].forEach(function(id) {
+  ['nb_name','nb_idno','nb_fico','nb_income','nb_dti','nb_days','nb_revolbal','nb_revutil','nb_inq','nb_delinq','nb_pub'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
   document.getElementById('nb-result').innerHTML = '';
@@ -823,7 +884,7 @@ async function addRepayment() {
 
     allRepayments.push({
       borrower_id: currentBorrower.id, borrower_name: currentBorrower.name,
-      borrower_addr: currentBorrower.addr,
+      borrower_addr: currentBorrower.addr, borrower_id_number: currentBorrower.idNumber || '',
       amount, onTime, fico, tx:realTxHash(), blockNumber, timestamp:Date.now(),
       dueDate: document.getElementById('f_duedate').value ? new Date(document.getElementById('f_duedate').value).getTime() : null,
       institution_name:currentInst.name, institution_addr:currentInst.addr, institution_color:currentInst.color,
@@ -901,6 +962,7 @@ function showTxModal(r) {
     ['From',      r.institution_addr],
     ['Contract',  '0xLoanRepay_8b3f2e1d'],
     ['Borrower',  `${r.borrower_name}`],
+    ['Borrower ID', maskIdNumber(r.borrower_id_number)],
     ['Borrower Address', r.borrower_addr || '—'],
     ['Amount',    '$'+r.amount.toLocaleString()],
     ['Status',    r.onTime?'✓ ON TIME':'✗ LATE'],
