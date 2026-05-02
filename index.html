@@ -576,6 +576,12 @@ function submitInstitutionLogin() {
   document.getElementById('inst-dot').style.background   = currentInst.color;
   document.getElementById('inst-pill-name').textContent  = currentInst.name;
   document.getElementById('inst-pill-addr').textContent  = currentInst.addr.slice(0,16)+'...';
+
+  if (currentBorrower) {
+    selectBorrower(currentBorrower);
+  } else if (borrowers.length > 0) {
+    fetchAndSelect(borrowers[0].id);
+  }
 }
 
 function backToInstitutionSelect() {
@@ -605,6 +611,7 @@ function signOutInstitution() {
   document.getElementById('login-password').value = '';
   document.getElementById('login-error').textContent = '';
   toggleBorrowerIdEditor(false, '');
+  resetResultCard();
   setAppShellVisible(false);
   document.getElementById('login-overlay').classList.remove('open');
   document.getElementById('inst-overlay').classList.add('open');
@@ -674,6 +681,7 @@ function selectBorrower(b) {
   document.getElementById('stat-ontime').textContent = myRep.filter(r=>r.onTime).length;
   document.getElementById('stat-total').textContent  = myRep.length;
 
+  restoreLastSubmissionResult();
   rebuildLogTable();
 }
 
@@ -751,7 +759,9 @@ async function registerBorrower() {
 
   btn.disabled=false; btn.textContent='Register & Calculate Initial Rate';
   renderBorrowerList();
+  selectBorrower(b);
   clearRegisterForm();
+  closeBorrowerModal();
 }
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
@@ -811,6 +821,41 @@ function updateResultCard(rate, prevRate, amount, onTime, fico, blockNum, gasUse
 }
 
 // ── Form reset helpers ────────────────────────────────────────────────────────
+function resetResultCard() {
+  document.getElementById('result-card').innerHTML = `
+    <div class="card-title">Last Submission Result</div>
+    <div style="color:var(--muted);font-size:0.78rem;padding-top:20px;font-family:var(--mono)">No submission yet</div>`;
+}
+
+function restoreLastSubmissionResult() {
+  if (!currentBorrower) {
+    resetResultCard();
+    return;
+  }
+
+  const records = allRepayments.filter(r=>r.borrower_id===currentBorrower.id);
+  if (records.length === 0) {
+    resetResultCard();
+    return;
+  }
+
+  const lastRecord = records[records.length - 1];
+  const hist = currentBorrower.rateHistory || [];
+  const lastRate = hist.length ? hist[hist.length - 1].rate : (currentBorrower.initialRate || 0);
+  const prevRate = hist.length > 1 ? hist[hist.length - 2].rate : lastRate;
+
+  updateResultCard(
+    lastRate,
+    prevRate,
+    lastRecord.amount,
+    lastRecord.onTime,
+    lastRecord.fico,
+    lastRecord.blockNumber,
+    lastRecord.gasUsed,
+    lastRecord.gasFeeEth
+  );
+}
+
 function clearRepaymentForm() {
   ['f_amount','f_fico','f_income','f_dti','f_days','f_revolbal','f_revutil','f_inq','f_delinq','f_pub'].forEach(function(id) {
     document.getElementById(id).value = '';
